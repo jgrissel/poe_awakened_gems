@@ -1,0 +1,11 @@
+- [ ] Development - Backend <!-- id: 8 -->
+    - [ ] Setup project structure <!-- id: 9 -->
+    - [ ] Implement poe.ninja API client <!-- id: 10 -->
+    - [ ] Implement profit/cost calculation logic <!-- id: 11 -->
+- [ ] Development - Frontend <!-- id: 12 -->
+    - [ ] Create basic web UI <!-- id: 13 -->
+    - [ ] Connect UI to Backend <!-- id: 14 -->
+    - [ ] Implement sorting and filtering <!-- id: 15 -->
+- [ ] Verification <!-- id: 16 -->
+    - [ ] Verify calculations against manual examples <!-- id: 17 -->
+    - [ ] Test UI responsiveness and data refreshing <!-- id: 18 -->

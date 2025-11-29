@@ -1,0 +1,18 @@
+# User specified exclusions
+node_modules/
+.env
+.gemini/
+artifacts/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/

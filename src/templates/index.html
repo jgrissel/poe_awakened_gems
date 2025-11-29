@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoE Awakened Gem Profit Calculator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffd700;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #d4af37;
+            border: none;
+            cursor: pointer;
+            color: #000;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #ffd700;
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            margin-right: 20px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #2c2c2c;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #444;
+        }
+
+        th {
+            background-color: #333;
+            cursor: pointer;
+            user-select: none;
+            text-align: right;
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+        }
+
+        th:hover {
+            background-color: #444;
+        }
+
+        tr:hover {
+            background-color: #383838;
+        }
+
+        .positive {
+            color: #4caf50;
+        }
+
+        .negative {
+            color: #f44336;
+        }
+
+        .loading {
+            text-align: center;
+            font-style: italic;
+            color: #888;
+            margin-top: 20px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content {
+            background-color: #2c2c2c;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .step-list {
+            margin: 20px 0;
+            padding-left: 20px;
+        }
+
+        .step-list li {
+            margin-bottom: 10px;
+        }
+
+        .math-table {
+            width: 100%;
+            border: 1px solid #444;
+            margin-top: 10px;
+        }
+
+        .math-table th,
+        .math-table td {
+            border: 1px solid #444;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .highlight {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .clickable-name {
+            color: #4fc3f7;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .clickable-name:hover {
+            color: #81d4fa;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>PoE Awakened Gem Profit Calculator</h1>
+
+    <div class="controls">
+        <label for="leagueSelect" style="margin-right: 10px; font-weight: bold;">League:</label>
+        <select id="leagueSelect" onchange="fetchData()">
+            <option value="Keepers" selected>Keepers</option>
+            <option value="Standard">Standard</option>
+            <option value="Hardcore Keepers">Hardcore Keepers</option>
+            <option value="Settlers">Settlers</option>
+        </select>
+        <button id="refreshBtn" onclick="fetchData()">Refresh Data (poe.ninja)</button>
+    </div>
+
+    <div id="status" class="loading" style="display: none;">Fetching latest prices...</div>
+
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Gem Details</h2>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <table id="gemTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable('name')">Gem Name</th>
+                <th onclick="sortTable('base_price_div')">Base Cost (Div)</th>
+                <th onclick="sortTable('investment_div')">Total Invest (Div)</th>
+                <th onclick="sortTable('lvl6_price_div')">Lvl 6 Price (Div)</th>
+                <th onclick="sortTable('ev_div')">Exp. Value (Div)</th>
+                <th onclick="sortTable('profit_div')">Profit (Div)</th>
+                <th onclick="sortTable('roi')">ROI (%)</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Data will be inserted here -->
+        </tbody>
+    </table>
+
+    <script>
+        let currentData = [];
+        let sortCol = 'profit_div';
+        let sortAsc = false;
+
+        async function fetchData() {
+            const btn = document.getElementById('refreshBtn');
+            const status = document.getElementById('status');
+            const league = document.getElementById('leagueSelect').value;
+
+            btn.disabled = true;
+            status.style.display = 'block';
+            status.innerText = `Fetching latest prices for ${league}...`;
+
+            try {
+                const response = await fetch(`/api/data?league=${league}`);
+                const data = await response.json();
+                currentData = data;
+                renderTable();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                alert('Failed to fetch data. Check console for details.');
+            } finally {
+                btn.disabled = false;
+                status.style.display = 'none';
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            // Sort data
+            currentData.sort((a, b) => {
+                let valA = a[sortCol];
+                let valB = b[sortCol];
+
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                if (valA < valB) return sortAsc ? -1 : 1;
+                if (valA > valB) return sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            currentData.forEach(gem => {
+                const tr = document.createElement('tr');
+
+                const profitClass = gem.profit_div >= 0 ? 'positive' : 'negative';
+
+                tr.innerHTML = `
+                    <td><span class="clickable-name" onclick="showDetails('${gem.name}')">${gem.name}</span></td>
+                    <td>${gem.base_price_div}</td>
+                    <td title="Base: ${gem.base_price_div}, Beasts: ${gem.details.brambleback_cost}, Qual: ${gem.details.quality_cost}">${gem.investment_div}</td>
+                    <td>${gem.lvl6_price_div}</td>
+                    <td>${gem.ev_div}</td>
+                    <td class="${profitClass}">${gem.profit_div}</td>
+                    <td class="${profitClass}">${gem.roi}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function sortTable(col) {
+            if (sortCol === col) {
+                sortAsc = !sortAsc;
+            } else {
+                sortCol = col;
+                sortAsc = false; // Default to descending for numbers usually
+                if (col === 'name') sortAsc = true;
+            }
+            renderTable();
+        }
+
+        function showDetails(gemName) {
+            const gem = currentData.find(g => g.name === gemName);
+            if (!gem) return;
+
+            const modal = document.getElementById("myModal");
+            const title = document.getElementById("modalTitle");
+            const body = document.getElementById("modalBody");
+
+            title.innerText = gem.name + " - Profit Analysis";
+
+            const bd = gem.breakdown;
+            const prices = bd.prices_chaos;
+            const costs = bd.costs_chaos;
+
+            // Helper to format chaos
+            const c = (val) => Math.round(val).toLocaleString() + "c";
+
+            body.innerHTML = `
+                <h3>1. Investment Steps</h3>
+                <ul class="step-list">
+                    <li><strong>Buy Base Gem (Lvl 1):</strong> <span class="highlight">${c(costs.base)}</span> (Price: ${c(prices.base)})</li>
+                    <li><strong>Quality to 20% (20 GCP):</strong> <span class="highlight">${c(costs.quality)}</span> (Unit: ${c(prices.gcp_unit)})</li>
+                    <li><strong>Level to 5 (4 Wild Bramblebacks):</strong> <span class="highlight">${c(costs.leveling)}</span> (Unit: ${c(prices.brambleback_unit)})</li>
+                    <li><strong>Corrupt (1 Vaal Orb):</strong> <span class="highlight">${c(prices.vaal_orb)}</span></li>
+                    <li style="border-top: 1px solid #555; padding-top: 5px;"><strong>Total Investment:</strong> <span class="highlight" style="color: #ff9800;">${c(costs.total)}</span></li>
+                </ul>
+
+                <h3>2. Corruption Outcomes (Probabilities)</h3>
+                <table class="math-table">
+                    <thead>
+                        <tr>
+                            <th>Outcome</th>
+                            <th>Probability</th>
+                            <th>Value (Chaos)</th>
+                            <th>Contribution to EV</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Success (Lvl 6, 20% Q)</strong></td>
+                            <td>12.5% (1/8)</td>
+                            <td>${c(prices.lvl6)}</td>
+                            <td>${c(prices.lvl6 * 0.125)}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Neutral (Lvl 5, 20% Q)</strong></td>
+                            <td>75% (6/8)</td>
+                            <td>${c(prices.lvl5_corr)}</td>
+                            <td>${c(prices.lvl5_corr * 0.75)}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Failure (Lvl 4, 20% Q)</strong></td>
+                            <td>12.5% (1/8)</td>
+                            <td>${c(prices.lvl4)}</td>
+                            <td>${c(prices.lvl4 * 0.125)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>3. Final Calculation</h3>
+                <p>
+                    <strong>Expected Value (EV):</strong> ${c(bd.math.ev)}<br>
+                    <strong>Total Cost:</strong> -${c(costs.total)}<br>
+                    <hr style="border-color: #555;">
+                    <strong>Expected Profit:</strong> <span class="${gem.profit_div >= 0 ? 'positive' : 'negative'}" style="font-size: 1.2em;">${c(bd.math.profit)}</span> 
+                    (${gem.profit_div} Divines)
+                </p>
+                
+                <h3>4. Data Validation (poe.ninja)</h3>
+                <p style="font-size: 0.9em; color: #aaa;">
+                    <strong>Level 6 Listings:</strong> ${gem.validation.lvl6_count} found (${gem.validation.lvl6_strict} exact 20% quality)<br>
+                    <strong>Level 5 Listings:</strong> ${gem.validation.lvl5_count} found (${gem.validation.lvl5_strict} exact 20% quality)<br>
+                    <strong>Level 4 Listings:</strong> ${gem.validation.lvl4_count} found (${gem.validation.lvl4_strict} exact 20% quality)
+                </p>
+            `;
+
+            modal.style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("myModal").style.display = "none";
+        }
+
+        // Close if clicked outside
+        window.onclick = function (event) {
+            const modal = document.getElementById("myModal");
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Initial load
+        fetchData();
+    </script>
+
+</body>
+
+</html>
